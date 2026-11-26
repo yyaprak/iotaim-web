@@ -1,0 +1,19 @@
+# iotaim
+
+> Güvenli uçtan uca haberleşme ve yapay zeka destekli akıllı IoT sistem çözümleri.
+
+## Sayfalar
+- Ana Sayfa (TR): https://iotaim.com/
+- English Homepage (EN): https://iotaim.com/en/
+- Endüstriyel ve Altyapı Çözümleri (Otomasyon, Metering, SCADA): https://iotaim.com/cozumler/endustriyel-scada-otomasyon.html
+- Akıllı Tarım ve Hayvancılık Çözümleri: https://iotaim.com/cozumler/akilli-tarim-hayvancilik.html
+- Akıllı Ev Sistemleri: https://iotaim.com/cozumler/akilli-ev-sistemleri.html
+- Akıllı Araç Çözümleri: https://iotaim.com/cozumler/akilli-arac-telemetri.html
+
+## Teknoloji Omurgası
+- **Güvenli Uçtan Uca Haberleşme:** Cihazdan buluta kadar tüm veri akışını şifreli, kesintisiz ve yüksek güvenlik standartlarıyla koruyan iletişim altyapısı.
+- **Her Boyutta Veri Transferi:** En küçük sensör telemetri paketlerinden yüksek hacimli anlık veri ve görüntü akışlarına kadar her ölçekte veriyi kayıpsız aktaran esnek mimari.
+
+## İletişim
+- Web: https://iotaim.com
+- E-posta: info@iotaim.com
