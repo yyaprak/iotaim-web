@@ -1,0 +1,110 @@
+name: CI Test, Discussion ve Jira Güncelleme
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  discussions: write
+
+jobs:
+  test-ve-raporla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Depoyu İndir
+        uses: actions/checkout@v4
+
+      - name: Proje Yapısını Analiz Et ve Test/Build Çalıştır
+        run: |
+          if [ -f "package.json" ]; then
+            echo "Node.js projesi algılandı."
+            npm ci || npm install
+            if grep -q '"build"' package.json; then
+              npm run build
+            fi
+          else
+            echo "Statik HTML/CSS/JS projesi algılandı."
+            test -f index.html || (echo "HATA: index.html bulunamadı!" && exit 1)
+          fi
+
+      - name: Commit Mesajından Jira Anahtarını Çıkar ve Discussion Aç
+        id: raporla
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        with:
+          script: |
+            const commitMsg = context.payload.head_commit?.message || "";
+            const projectKey = process.env.JIRA_PROJECT_KEY || "PROJ";
+            const regex = new RegExp(`(${projectKey}-\\d+)`, "i");
+            const match = commitMsg.match(regex);
+            const issueKey = match ? match[1].toUpperCase() : `${projectKey}-1`;
+
+            const repoQuery = `
+              query($owner: String!, $name: String!) {
+                repository(owner: $owner, name: $name) {
+                  id
+                  discussionCategories(first: 10) {
+                    nodes { id name }
+                  }
+                }
+              }`;
+            const repoData = await github.graphql(repoQuery, {
+              owner: context.repo.owner,
+              name: context.repo.repo
+            });
+
+            const repoId = repoData.repository.id;
+            const categories = repoData.repository.discussionCategories.nodes;
+            const category = categories.find(c => c.name === "General") || categories[0];
+
+            const title = `[${issueKey}] Değişiklik İncelemesi: ${commitMsg.split('\n')[0]}`;
+            const body = `### Otomatik CI Testi Başarılı\n\n- **Jira Kartı:** ${issueKey}\n- **Commit:** ${context.sha.substring(0, 7)}\n- **Mesaj:** ${commitMsg}\n\nOnay vermek için Jira üzerinde **${issueKey}** kartını **Done** durumuna çekin.`;
+
+            const createMutation = `
+              mutation($repoId: ID!, $catId: ID!, $title: String!, $body: String!) {
+                createDiscussion(input: {repositoryId: $repoId, categoryId: $catId, title: $title, body: $body}) {
+                  discussion { url }
+                }
+              }`;
+            const discRes = await github.graphql(createMutation, {
+              repoId: repoId,
+              catId: category.id,
+              title: title,
+              body: body
+            });
+
+            const discussionUrl = discRes.createDiscussion.discussion.url;
+            const auth = Buffer.from(`${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`).toString('base64');
+
+            const jiraRes = await fetch(`${process.env.JIRA_BASE_URL}/rest/api/3/issue/${issueKey}/comment`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${auth}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                body: {
+                  type: "doc",
+                  version: 1,
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        { type: "text", text: "GitHub CI testleri başarıyla tamamlandı. İnceleme tartışması: " },
+                        { type: "text", text: discussionUrl, marks: [{ type: "link", attrs: { href: discussionUrl } }] }
+                      ]
+                    }
+                  ]
+                }
+              })
+            });
+
+            if (!jiraRes.ok) {
+              console.log("Jira yorum uyarısı:", jiraRes.status, await jiraRes.text());
+            }
