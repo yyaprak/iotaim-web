@@ -1,2 +1,14 @@
-jira-push.sh
-logo/
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Internal / confidential notes
+logo/logo_detay.md
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
